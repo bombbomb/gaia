@@ -3,7 +3,6 @@
   "appName": "hydra",
   "dnsZone": "bbhydra.com.",
   "dnsHostname": "app",
-  "sourceCodePath": "/Users/pmcdavid/Documents/git/Hydra",
   "elasticBeanstalk": {
     "solutionStack": "64bit Amazon Linux 2016.09 v2.3.2 running Python 3.4",
     "optionSettings": [
@@ -21,6 +20,11 @@
         "Namespace": "aws:elasticbeanstalk:container:python",
         "OptionName": "WSGIPath",
         "Value": "app.py"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "MY_SETTING",
+        "Value": "MY_VALUE"
       }
     ]
   }

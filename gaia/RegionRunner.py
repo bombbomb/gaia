@@ -1,13 +1,15 @@
 import threading
 import boto3
+import time
 
 
 class RegionRunner(threading.Thread):
-    def __init__(self, region, config, aws_config):
+    def __init__(self, region, config, aws_config, dns_manager):
         threading.Thread.__init__(self)
         self.region = region
         self.config = config
         self.aws_config = aws_config
+        self.dns_manager = dns_manager
 
         self.aws_eb = self.aws_client('elasticbeanstalk')
         self.aws_s3 = self.aws_client('s3')
@@ -97,7 +99,7 @@ class RegionRunner(threading.Thread):
             'Value': self.config['instance_profile']
         })
 
-        response = self.aws_eb.create_environment(
+        create_response = self.aws_eb.create_environment(
             ApplicationName=self.config['appName'],
             EnvironmentName=version_num,
             CNAMEPrefix=self.config['appName'] + '-' + version_num,
@@ -105,6 +107,31 @@ class RegionRunner(threading.Thread):
             SolutionStackName=self.config['elasticBeanstalk']['solutionStack'],
             OptionSettings=option_settings
         )
-        self.log(response)
+        self.log(create_response)
 
         # poll for environment to go green
+        health_check_interval_seconds = 20
+        self.log("Awaiting green environments in " + str(health_check_interval_seconds) + " second intervals")
+        for loop_count in range(1, 100):
+            time.sleep(health_check_interval_seconds)
+            health_color = None
+            try:
+                health_response = self.aws_eb.describe_environments(
+                    EnvironmentNames=[version_num]
+                )
+
+                env = health_response['Environments'][0]
+                self.log("Status: %s and is: %s" % (env['Status'], env['Health']))
+                health_color = env['Health']
+
+            except Exception as e:
+                self.log(e)
+
+            if health_color is not None and health_color == 'Green':
+                self.log("Environment Green!")
+                break
+
+        self.dns_manager.receive_new_endpoint(self.region, create_response['CNAME'])
+
+    def terminate_all_environments_except(self, good_environment_name):
+        pass

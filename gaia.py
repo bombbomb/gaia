@@ -1,10 +1,23 @@
-import json, time, shutil, boto3
+import json
+import time
+import shutil
+import boto3
+import sys
 
+from gaia.DNSManager import DNSManager
 from gaia.RegionRunner import RegionRunner
 
 print("Welcome to Gaia")
 
-with open('config.json') as json_data:
+args = sys.argv
+
+if len(args) == 1:
+    print("You must pass in a path")
+    exit()
+
+code_path = args[1]
+
+with open(code_path + '/gaia.json') as json_data:
     gaia_config = json.load(json_data)
     print(gaia_config)
 
@@ -16,8 +29,8 @@ with open('aws.json') as json_data:
 def create_version_zip():
     gaia_config['version_num'] = str(round(time.time()))
     gaia_config['zip_path'] = "build/version_" + gaia_config['version_num']
-    print("Zipping " + gaia_config['sourceCodePath'])
-    shutil.make_archive(gaia_config['zip_path'], 'zip', gaia_config['sourceCodePath'])
+    print("Zipping " + code_path)
+    shutil.make_archive(gaia_config['zip_path'], 'zip', code_path)
     path_ = gaia_config['zip_path']
     gaia_config['zip_path'] = path_ + '.zip'
 
@@ -141,8 +154,11 @@ def create_iam_assets():
 create_version_zip()
 create_iam_assets()
 
-# zone checking
+dnsManager = DNSManager(gaia_config, aws_config)
 
 for region_name in gaia_config['regions']:
-    region_runner = RegionRunner(region_name, gaia_config, aws_config)
+    region_runner = RegionRunner(region_name, gaia_config, aws_config, dnsManager)
+    dnsManager.add_region_runner(region_runner)
     region_runner.start()
+
+dnsManager.await_lights()
