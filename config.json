@@ -1,12 +1,27 @@
 {
-  "regions": ["us-east1", "us-west-1"],
+  "regions": ["us-east-2", "us-west-1"],
   "appName": "hydra",
-  "dnsZone": "bbhydra.com",
+  "dnsZone": "bbhydra.com.",
   "dnsHostname": "app",
+  "sourceCodePath": "/Users/pmcdavid/Documents/git/Hydra",
   "elasticBeanstalk": {
-    "solutionStack": "python",
-    "optionSettings": {
-
-    }
+    "solutionStack": "64bit Amazon Linux 2016.09 v2.3.2 running Python 3.4",
+    "optionSettings": [
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType",
+        "Value": "t2.micro"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ServiceRole",
+        "Value": "AWSElasticBeanstalkEnhancedHealth"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:container:python",
+        "OptionName": "WSGIPath",
+        "Value": "app.py"
+      }
+    ]
   }
 }
