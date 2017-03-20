@@ -1,0 +1,12 @@
+{
+  "regions": ["us-east1", "us-west-1"],
+  "appName": "hydra",
+  "dnsZone": "bbhydra.com",
+  "dnsHostname": "app",
+  "elasticBeanstalk": {
+    "solutionStack": "python",
+    "optionSettings": {
+
+    }
+  }
+}
