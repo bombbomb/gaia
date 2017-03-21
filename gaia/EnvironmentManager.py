@@ -41,6 +41,7 @@ class EnvironmentManager:
 
             if launcher.color == 'Red':
                 print("The %s environment went Red, aborting deployment" % launcher.region)
+                break
 
         if num_goal == num_ready == num_ready:
             self.cb()

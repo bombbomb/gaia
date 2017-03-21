@@ -29,9 +29,10 @@ class Gaia:
         #     region_runner.start()
 
     def main_menu(self, msg=None):
-        os.system('clear')
         if msg is not None:
             print(msg + "\n\n")
+        else:
+            print("\n\nGaia Main Menu\n\n")
         print("Choose a path:\n"
               "1. Immediate Full Deployment\n"
               "2. Canary Deployment\n"
@@ -42,7 +43,7 @@ class Gaia:
               "7. List Existing Versions\n"
               "8. List Running Environments\n"
               "9. Tear Down Environment\n"
-              "0. Exit")
+              "0. Exit\n")
 
         user_entry = input()
 
@@ -52,6 +53,8 @@ class Gaia:
             self.run_create_eb_version()
         elif user_entry == '5':
             self.run_dns_status()
+        elif user_entry == '6':
+            self.run_dns_transition()
         elif user_entry == '8':
             self.run_list_environments()
         else:
@@ -71,15 +74,29 @@ class Gaia:
         self.version_manager.release_version()
 
     def run_dns_status(self):
-        print(self.dns_manager.get_dns_configuration())
+        dns = self.dns_manager.get_dns_configuration()
+        for region in self.config['regions']:
+            print(region)
+            print(" - Region DNS: %s" % dns[region]['region_record'])
+            for record in dns[region]['environment_records']:
+                print("   - %s" % record)
+        self.main_menu()
+
+    def run_dns_transition(self):
+        self.print_running_environments_to_screen()
+        v_to_move_to = input("Which Version do you want to move to?\n")
+        self.dns_manager.transition_dns(v_to_move_to)
 
     def run_list_environments(self):
+        self.print_running_environments_to_screen()
+        self.main_menu()
+
+    def print_running_environments_to_screen(self):
         envs = self.environment_manager.list_environments()
         for region in self.config['regions']:
             print(region)
             for env in envs[region]:
                 print(" - %s | %s | %s" % (env['EnvironmentName'], env['Health'], env['CNAME']))
-        pass
 
     @staticmethod
     def region_log(region, msg):
@@ -90,11 +107,3 @@ class Gaia:
                             aws_access_key_id=self.aws_config['key'],
                             aws_secret_access_key=self.aws_config['secret'],
                             region_name=region)
-
-# regional
-# - eb
-# - s3
-
-# global
-# - iam
-# - r53
