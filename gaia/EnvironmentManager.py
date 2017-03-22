@@ -22,7 +22,7 @@ class EnvironmentManager:
             else:
                 print("EB Application exists in %s" % region)
 
-    def create_eb_environments(self, version_num, cb):
+    def create_eb_environments(self, version_num, cb=None):
         self.cb = cb
         for region in self.gaia.config['regions']:
             launcher = EnvironmentLauncher(self.gaia, region, version_num)
@@ -43,7 +43,7 @@ class EnvironmentManager:
                 print("The %s environment went Red, aborting deployment" % launcher.region)
                 break
 
-        if num_goal == num_ready == num_ready:
+        if num_goal == num_ready == num_ready and self.cb is not None:
             self.cb()
 
     def list_environments(self):

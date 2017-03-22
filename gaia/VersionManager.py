@@ -1,3 +1,4 @@
+import datetime
 import shutil
 import time
 
@@ -7,14 +8,15 @@ class VersionManager:
         self.gaia = gaia
 
     def release_version(self):
-        version_num = str(round(time.time()))
+        version_num = '{:%Y-%m-%d--%H-%M-%S}'.format(datetime.datetime.now())
+        # version_num = str(round(time.time()))
         print("Releasing new version: %s" % version_num)
         zip_path = self.create_version_zip(version_num)
         self.create_eb_version(version_num, zip_path)
         return version_num
 
     def create_version_zip(self, version_num):
-        zip_path = "build/version_" + version_num
+        zip_path = "build/" + self.gaia.config['appName'] + "/version_" + version_num
         print("Zipping " + self.gaia.config['code_path'])
         shutil.make_archive(zip_path, 'zip', self.gaia.config['code_path'])
         return zip_path + '.zip'

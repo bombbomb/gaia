@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import boto3
@@ -22,33 +23,31 @@ class Gaia:
 
         self.main_menu()
 
-        print("Gaia sleeps")
+        self.log("Gaia sleeps")
         # for region_name in self.config['regions']:
         #     region_runner = RegionRunner(region_name, gaia_config, aws_config, dns_manager)
         #     dns_manager.add_region_runner(region_runner)
         #     region_runner.start()
 
     def main_menu(self, msg=None):
-        if msg is not None:
-            print(msg + "\n\n")
-        else:
-            print("\n\nGaia Main Menu\n\n")
-        print("Choose a path:\n"
-              "1. Immediate Full Deployment\n"
-              "2. Canary Deployment\n"
-              "3. Background Deployment\n"
-              "4. Create Eb Version\n"
-              "5. DNS Status\n"
-              "6. DNS Transition\n"
-              "7. List Existing Versions\n"
-              "8. List Running Environments\n"
-              "9. Tear Down Environment\n"
-              "0. Exit\n")
+        self.log("Choose a path:\n"
+                 "1. Immediate Full Deployment\n"
+                 "2. Canary Deployment\n"
+                 "3. Background Deployment\n"
+                 "4. Create Eb Version\n"
+                 "5. DNS Status\n"
+                 "6. DNS Transition\n"
+                 "7. List Existing Versions\n"
+                 "8. List Running Environments\n"
+                 "9. Tear Down Environment\n"
+                 "0. Exit\n")
 
         user_entry = input()
 
         if user_entry == '1':
             self.run_immediate_full()
+        elif user_entry == '3':
+            self.release_bg_version()
         elif user_entry == '4':
             self.run_create_eb_version()
         elif user_entry == '5':
@@ -58,14 +57,14 @@ class Gaia:
         elif user_entry == '8':
             self.run_list_environments()
         else:
-            print("Not implemented...")
+            self.log("Not implemented...")
             pass
 
     def run_immediate_full(self):
         version_num = self.version_manager.release_version()
 
         def cb():
-            print("run_immediate_full")
+            self.log("run_immediate_full")
             self.dns_manager.transition_dns(version_num)
 
         self.environment_manager.create_eb_environments(version_num, cb)
@@ -73,13 +72,17 @@ class Gaia:
     def run_create_eb_version(self):
         self.version_manager.release_version()
 
+    def release_bg_version(self):
+        version_num = self.version_manager.release_version()
+        self.environment_manager.create_eb_environments(version_num)
+
     def run_dns_status(self):
         dns = self.dns_manager.get_dns_configuration()
         for region in self.config['regions']:
-            print(region)
-            print(" - Region DNS: %s" % dns[region]['region_record'])
+            self.log(region)
+            self.log(" - Region DNS: %s" % dns[region]['region_record'])
             for record in dns[region]['environment_records']:
-                print("   - %s" % record)
+                self.log("   - Environment Weight: %s %s" % (record['Weight'], record['Value']))
         self.main_menu()
 
     def run_dns_transition(self):
@@ -94,13 +97,17 @@ class Gaia:
     def print_running_environments_to_screen(self):
         envs = self.environment_manager.list_environments()
         for region in self.config['regions']:
-            print(region)
+            self.log(region)
             for env in envs[region]:
-                print(" - %s | %s | %s" % (env['EnvironmentName'], env['Health'], env['CNAME']))
+                self.log(" - %s | %s | %s" % (env['EnvironmentName'], env['Health'], env['CNAME']))
 
     @staticmethod
     def region_log(region, msg):
-        print(region + ": ",  msg)
+        Gaia.log("%s: %s" % (region, msg))
+
+    @staticmethod
+    def log(msg):
+        print('{:%Y-%m-%d %H:%M:%S}: '.format(datetime.datetime.now()) + msg)
 
     def create_aws_client(self, client_name, region=None):
         return boto3.client(client_name,

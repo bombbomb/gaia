@@ -14,11 +14,30 @@ class DNSManager:
         self.get_zone_id()
 
     def transition_dns(self, destination_version, destination_amt=100):
-        print("Transitioning DNS to %s in the amount of %s" % (destination_version, destination_amt))
+        self.gaia.log("Transitioning DNS to %s in the amount of %s" % (destination_version, destination_amt))
         self.ensure_region_records()
 
-        regional_environments = self.gaia.environment_manager.list_environments()
+        dns_situation = self.get_dns_configuration()
 
+        old_version = self.determine_version_to_migrate_away_from(dns_situation)
+
+        new_endpoints = self.collect_new_endpoints(destination_version,
+                                                   self.gaia.environment_manager.list_environments())
+
+        self.gaia.log("Changing Endpoints to: %s" % new_endpoints)
+
+        for region in self.gaia.config['regions']:
+            if destination_amt == 100:
+                self.change_env_endpoint(destination_version, new_endpoints[region], region, destination_amt)
+                if destination_version != old_version:
+                    for record in dns_situation[region]['environment_records']:
+                        if record['SetIdentifier'] != destination_version:
+                            self.change_env_endpoint(record['SetIdentifier'],
+                                                     record['Value'], region, record['Weight'], 'DELETE')
+
+        self.gaia.log("Transition Complete")
+
+    def collect_new_endpoints(self, destination_version, regional_environments):
         new_endpoints = {}
         for region in self.gaia.config['regions']:
             new_endpoint = None
@@ -27,40 +46,32 @@ class DNSManager:
                     new_endpoint = environment['CNAME']
 
             if new_endpoint is None:
-                print("Aborting: Could not determine new endpoint in %s" % region)
+                self.gaia.log("Aborting: Could not determine new endpoint in %s" % region)
                 exit()
             else:
                 new_endpoints[region] = new_endpoint
+        return new_endpoints
 
-        print("Changing Endpoints to: %s" % new_endpoints)
-
-        for region in self.gaia.config['regions']:
-            if destination_amt == 100:
-                change_result = self.r53.change_resource_record_sets(
-                    HostedZoneId=self.hosted_zone_id,
-                    ChangeBatch={
-                        'Changes': [
-                            {
-                                'Action': 'UPSERT',
-                                'ResourceRecordSet': {
-                                    'Name': self.gen_cname_for_regional_endpoint(region),
-                                    'Type': 'CNAME',
-                                    'SetIdentifier': destination_version,
-                                    'Weight': 100,
-                                    'TTL': 60,
-                                    'ResourceRecords': [
-                                        {
-                                            'Value': new_endpoints[region]
-                                        }
-                                    ]
-                                }
-                            },
-                        ]
-                    }
-                )
-                print(change_result)
-
-        print("Transition Complete")
+    def change_env_endpoint(self, set_id, destination, region, weight, action='UPSERT'):
+        change_result = self.r53.change_resource_record_sets(
+            HostedZoneId=self.hosted_zone_id,
+            ChangeBatch={
+                'Changes': [
+                    {
+                        'Action': action,
+                        'ResourceRecordSet': {
+                            'Name': self.gen_cname_for_regional_endpoint(region),
+                            'Type': 'CNAME',
+                            'SetIdentifier': set_id,
+                            'Weight': weight,
+                            'TTL': 60,
+                            'ResourceRecords': [{'Value': destination}]
+                        }
+                    },
+                ]
+            }
+        )
+        print(change_result)
 
     def get_dns_configuration(self):
         zone_id = self.get_zone_id()
@@ -83,7 +94,10 @@ class DNSManager:
 
                 if record['Name'] == self.gen_cname_for_regional_endpoint(region) and record['Weight'] is not None:
                     config[region]['environment_records'].append({
-
+                        'Name': record['Name'],
+                        'Weight': record['Weight'],
+                        'Value': record['ResourceRecords'][0]['Value'],
+                        'SetIdentifier': record['SetIdentifier']
                     })
 
         return config
@@ -100,7 +114,7 @@ class DNSManager:
                 break
 
         self.hosted_zone_id = hosted_zone_id
-        print("Got hosted zone id: %s" % self.hosted_zone_id)
+        self.gaia.log("Got hosted zone id: %s" % self.hosted_zone_id)
         return self.hosted_zone_id
 
     def gen_cname_for_regional_endpoint(self, region):
@@ -137,4 +151,15 @@ class DNSManager:
                         ]
                     }
                 )
-                print(change_result)
+                self.gaia.log(change_result)
+
+    def determine_version_to_migrate_away_from(self, dns_situation, destination_version=None):
+        for region in self.gaia.config['regions']:
+            regional_winner = None
+            regional_high_score = 0
+            for record in dns_situation[region]['environment_records']:
+                if record['Weight'] > regional_high_score:
+                    regional_winner = record['SetIdentifier']
+            if regional_winner is not None and regional_winner is not destination_version:
+                return regional_winner
+        return None
