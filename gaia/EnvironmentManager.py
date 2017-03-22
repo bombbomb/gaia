@@ -64,5 +64,11 @@ class EnvironmentManager:
 
         return envs
 
-    def terminate_all_environments_except(self, good_environment_name):
-        pass
+    def terminate_environments_for_version(self, version):
+        for region in self.gaia.config['regions']:
+            eb = self.gaia.create_aws_client('elasticbeanstalk', region)
+            print("Terminating environments in %s running %s" % (region, version))
+            eb.terminate_environment(
+                EnvironmentName='version' + version,  # todo don't just delete just anything
+                TerminateResources=True
+            )

@@ -29,7 +29,7 @@ class Gaia:
         #     dns_manager.add_region_runner(region_runner)
         #     region_runner.start()
 
-    def main_menu(self, msg=None):
+    def main_menu(self):
         self.log("Choose a path:\n"
                  "1. Immediate Full Deployment\n"
                  "2. Canary Deployment\n"
@@ -56,6 +56,8 @@ class Gaia:
             self.run_dns_transition()
         elif user_entry == '8':
             self.run_list_environments()
+        elif user_entry == '9':
+            self.tear_down_env()
         else:
             self.log("Not implemented...")
             pass
@@ -94,12 +96,18 @@ class Gaia:
         self.print_running_environments_to_screen()
         self.main_menu()
 
+    def tear_down_env(self):
+        self.print_running_environments_to_screen()
+        v_to_rem = input("Which Version's environments do you want to terminate?\n")
+        self.environment_manager.terminate_environments_for_version(v_to_rem)
+        self.main_menu()
+
     def print_running_environments_to_screen(self):
         envs = self.environment_manager.list_environments()
         for region in self.config['regions']:
             self.log(region)
             for env in envs[region]:
-                self.log(" - %s | %s | %s" % (env['EnvironmentName'], env['Health'], env['CNAME']))
+                self.log(" - %s | %s | %s" % (env['VersionLabel'], env['Health'], env['CNAME']))
 
     @staticmethod
     def region_log(region, msg):
