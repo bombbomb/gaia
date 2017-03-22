@@ -128,7 +128,7 @@ class DNSManager:
 
         for region in self.gaia.config['regions']:
             if existing_records[region]['region_record'] is None:
-                self.gaia.region_log(region, "Creating regional DNS entry")
+                print("Creating regional DNS entry in " + region)
                 change_result = self.r53.change_resource_record_sets(
                     HostedZoneId=self.hosted_zone_id,
                     ChangeBatch={

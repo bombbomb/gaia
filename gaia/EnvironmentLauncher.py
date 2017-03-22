@@ -1,3 +1,4 @@
+import copy
 import threading
 import time
 
@@ -18,12 +19,14 @@ class EnvironmentLauncher(threading.Thread):
         self.log("Creating Elastic Beanstalk Environment")
         version_num = 'version' + self.version
 
-        option_settings = self.gaia.config['elasticBeanstalk']['optionSettings']
+        option_settings = copy.copy(self.gaia.config['elasticBeanstalk']['optionSettings'])
         option_settings.append({
             'Namespace': 'aws:autoscaling:launchconfiguration',
             'OptionName': 'IamInstanceProfile',
             'Value': self.gaia.iam_manager.instance_profile
         })
+
+        option_settings = self.add_environment_vars(option_settings, self.region)
 
         create_response = eb.create_environment(
             ApplicationName=self.gaia.config['appName'],
@@ -61,3 +64,27 @@ class EnvironmentLauncher(threading.Thread):
 
     def log(self, msg):
         self.gaia.region_log(self.region, msg)
+
+    def add_environment_vars(self, option_settings, region):
+
+        flattened_environment_vars = {}
+
+        if 'environmentVariables' in self.gaia.config:
+            ev = self.gaia.config['environmentVariables']
+            if 'global' in ev:
+                for key in ev['global']:
+                    flattened_environment_vars[key] = ev['global'][key]
+
+            if 'regional' in ev:
+                if region in ev['regional']:
+                    for key in ev['regional'][region]:
+                        flattened_environment_vars[key] = ev['regional'][region][key]
+
+        for key in flattened_environment_vars:
+            option_settings.append({
+                'Namespace': 'aws:elasticbeanstalk:application:environment',
+                'OptionName': key,
+                'Value': flattened_environment_vars[key]
+            })
+
+        return option_settings

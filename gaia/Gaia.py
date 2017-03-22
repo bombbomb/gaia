@@ -107,6 +107,8 @@ class Gaia:
         for region in self.config['regions']:
             self.log(region)
             for env in envs[region]:
+                if 'VersionLabel' not in env:
+                    env['VersionLabel'] = 'n/a'
                 self.log(" - %s | %s | %s" % (env['VersionLabel'], env['Health'], env['CNAME']))
 
     @staticmethod
@@ -115,7 +117,7 @@ class Gaia:
 
     @staticmethod
     def log(msg):
-        print('{:%Y-%m-%d %H:%M:%S}: '.format(datetime.datetime.now()) + msg)
+        print("%s %s" % ('{:%Y-%m-%d %H:%M:%S}: '.format(datetime.datetime.now()), msg))
 
     def create_aws_client(self, client_name, region=None):
         return boto3.client(client_name,

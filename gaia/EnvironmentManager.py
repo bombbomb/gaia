@@ -56,10 +56,12 @@ class EnvironmentManager:
                 env = {
                     'EnvironmentName': environment['EnvironmentName'],
                     'CNAME': environment['CNAME'],
-                    'VersionLabel': environment['VersionLabel'],
                     'Health': environment['Health'],
                     'Status': environment['Status']
                 }
+                if 'VersionLabel' in environment:
+                    env['VersionLabel'] = environment['VersionLabel']
+
                 envs[region].append(env)
 
         return envs
@@ -68,7 +70,10 @@ class EnvironmentManager:
         for region in self.gaia.config['regions']:
             eb = self.gaia.create_aws_client('elasticbeanstalk', region)
             print("Terminating environments in %s running %s" % (region, version))
-            eb.terminate_environment(
-                EnvironmentName='version' + version,  # todo don't just delete just anything
-                TerminateResources=True
-            )
+            try:
+                eb.terminate_environment(
+                    EnvironmentName='version' + version,  # todo don't just delete just anything
+                    TerminateResources=True
+                )
+            except Exception as e:
+                print("No env in " + region)
