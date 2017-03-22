@@ -1,7 +1,6 @@
 import datetime
 import os
 import shutil
-import time
 
 
 class VersionManager:
@@ -73,3 +72,4 @@ class VersionManager:
                     'S3Key': version_key
                 }
             )
+        os.remove(zip_path)
