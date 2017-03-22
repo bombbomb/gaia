@@ -26,7 +26,7 @@ class EnvironmentLauncher(threading.Thread):
             'Value': self.gaia.iam_manager.instance_profile
         })
 
-        option_settings = self.add_environment_vars(option_settings, self.region)
+        option_settings = self.add_environment_vars(option_settings, self.region, self.version)
 
         create_response = eb.create_environment(
             ApplicationName=self.gaia.config['appName'],
@@ -65,9 +65,12 @@ class EnvironmentLauncher(threading.Thread):
     def log(self, msg):
         self.gaia.region_log(self.region, msg)
 
-    def add_environment_vars(self, option_settings, region):
+    def add_environment_vars(self, option_settings, region, version):
 
-        flattened_environment_vars = {}
+        flattened_environment_vars = {
+            'GAIA_VERSION': version,
+            'GAIA_REGION': region
+        }
 
         if 'environmentVariables' in self.gaia.config:
             ev = self.gaia.config['environmentVariables']
