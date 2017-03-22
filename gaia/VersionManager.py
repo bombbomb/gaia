@@ -1,4 +1,5 @@
 import datetime
+import os
 import shutil
 import time
 
@@ -16,9 +17,26 @@ class VersionManager:
         return version_num
 
     def create_version_zip(self, version_num):
-        zip_path = "build/" + self.gaia.config['appName'] + "/version_" + version_num
+
+        app_build_dir = "build/" + self.gaia.config['appName'] + "/"
+
+        zip_path = app_build_dir + "version_" + version_num
+
+        clean_code_path = app_build_dir + "/" + version_num
+
+        shutil.copytree(self.gaia.config['code_path'], clean_code_path)
+
+        if 'buildIgnorePatterns' in self.gaia.config:
+            for path in self.gaia.config['buildIgnorePatterns']:
+                combined_path = os.path.join(clean_code_path, path)
+                if os.path.isdir(combined_path):
+                    shutil.rmtree(combined_path)
+                if os.path.isfile(combined_path):
+                    os.remove(combined_path)
+
         print("Zipping " + self.gaia.config['code_path'])
-        shutil.make_archive(zip_path, 'zip', self.gaia.config['code_path'])
+        shutil.make_archive(zip_path, 'zip', clean_code_path)
+        shutil.rmtree(clean_code_path)
         return zip_path + '.zip'
 
     def create_eb_version(self, version_num, zip_path):
