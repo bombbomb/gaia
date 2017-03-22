@@ -43,8 +43,8 @@ class EnvironmentManager:
                 print("The %s environment went Red, aborting deployment" % launcher.region)
                 break
 
-        if num_goal == num_ready == num_ready and self.cb is not None:
-            self.cb()
+        if num_goal == num_ready == num_green and self.cb is not None:
+            self.cb(True)
 
     def list_environments(self):
         envs = {}

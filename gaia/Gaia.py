@@ -65,9 +65,12 @@ class Gaia:
     def run_immediate_full(self):
         version_num = self.version_manager.release_version()
 
-        def cb():
-            self.log("run_immediate_full")
-            self.dns_manager.transition_dns(version_num)
+        def cb(all_good):
+            if all_good:
+                self.log("All Environments Green, updating DNS")
+                self.dns_manager.transition_dns(version_num)
+            else:
+                self.log("Some environments not Green. Not proceeding with DNS switch.")
 
         self.environment_manager.create_eb_environments(version_num, cb)
 
