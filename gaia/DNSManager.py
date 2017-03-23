@@ -1,3 +1,5 @@
+import random
+
 import boto3
 
 
@@ -125,8 +127,31 @@ class DNSManager:
 
     def ensure_region_records(self):
         existing_records = self.get_dns_configuration()
+        health_checks = self.r53.list_health_checks()
 
         for region in self.gaia.config['regions']:
+
+            regional_health_check_id = None
+            for hc in health_checks['HealthChecks']:
+                if hc['HealthCheckConfig']['FullyQualifiedDomainName'] == self.gen_cname_for_regional_endpoint(region):
+                    regional_health_check_id = hc['Id']
+
+            if regional_health_check_id is None:
+                result = self.r53.create_health_check(
+                    CallerReference=("%s" % random.random()),
+                    HealthCheckConfig={
+                        'Port': 80,
+                        'Type': 'HTTP',
+                        'ResourcePath': '/',
+                        'FullyQualifiedDomainName': self.gen_cname_for_regional_endpoint(region),
+                        'RequestInterval': 10,
+                        'FailureThreshold': 3,
+                        'MeasureLatency': True,
+                        'Regions': ['us-east-1', 'us-west-1', 'us-west-2', 'eu-west-1']
+                    }
+                )
+                regional_health_check_id = result['HealthCheck']['Id']
+
             if existing_records[region]['region_record'] is None:
                 print("Creating regional DNS entry in " + region)
                 change_result = self.r53.change_resource_record_sets(
@@ -145,7 +170,8 @@ class DNSManager:
                                         {
                                             'Value': self.gen_cname_for_regional_endpoint(region)
                                         }
-                                    ]
+                                    ],
+                                    'HealthCheckId': regional_health_check_id
                                 }
                             },
                         ]
